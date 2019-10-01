@@ -418,14 +418,25 @@ class Zotero(object):
         self.self_link = request
         # ensure that we wait if there's an active backoff
         self._check_backoff()
-        self.request = requests.get(
-            url=full_url, headers=self.default_headers(), params=params
-        )
-        self.request.encoding = "utf-8"
-        try:
-            self.request.raise_for_status()
-        except requests.exceptions.HTTPError:
-            error_handler(self, self.request)
+        retry_count_for_429 = 0
+
+        while retry_count_for_429 < 10:
+            self.request = requests.get(
+                url=full_url, headers=self.default_headers(), params=params
+            )
+            self.request.encoding = "utf-8"
+            if self.request.status_code == 429:
+                retry_after = self.request.headers.get("Retry-After")
+                if retry_after:
+                    time.sleep(retry_after)
+                    retry_count_for_429 += 1
+                    continue
+            try:
+                self.request.raise_for_status()
+            except requests.exceptions.HTTPError:
+                error_handler(self, self.request)
+            break
+
         backoff = self.request.headers.get("backoff")
         if backoff:
             self._set_backoff(backoff)

@@ -29,7 +29,7 @@ def find_version(*file_paths):
 
 version = find_version("pyzotero/zotero.py")
 
-with open('README.md') as f:
+with open('README.md', encoding='utf-8') as f:
     readme = f.read()
 
 setup(
